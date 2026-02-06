@@ -11,8 +11,16 @@ app.get('/', (req, res) => {
 
 app.get('/pokemons', async (req, res) => {
   try {
-    const pokemons = await pokemon.find({});
+    /* We implement pagination with the standar : offset and limit */
+
+    /* Querry Params */
+    const offset = req.query?.offset || 0; // 0 as default value if not provided
+    const limit = req.query?.limit || 20; // 20 as the default value if not provided
+
+    
+    const pokemons = await pokemon.find({}).skip(offset).limit(limit);
     res.json(pokemons);
+
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -31,6 +39,8 @@ app.get('/pokemons/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+app.get('/pokemons')
 
 
 console.log('Server is set up. Ready to start listening on a port.');
