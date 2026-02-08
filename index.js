@@ -49,6 +49,29 @@ app.get('/pokemons/search', async (req, res) => {
   }
 })
 
+app.delete('/pokemons/:id', async (req, res) => {
+  try{
+    const pokeId = parseInt(req.params.id, 10)
+
+    const finPoke = await pokemon.findOne({ id: pokeId });
+
+    if (!finPoke){
+      res.json({message : "Can't find this pokemon"})
+    }
+
+    const poke = await pokemon.deleteOne({id : pokeId})
+    console.log(poke)
+    if (poke){
+      res.json({message : "Succefully deleted pokemon"})
+    }
+    else{
+      res.json({message : "Got wrong answer when tried to delete pokemon"})
+    }
+  } catch(error) {
+    res.status(500).json({error: 'Internal Server Error'})
+  }
+})
+
 app.get('/pokemons/:id', async (req, res) => {
   try {
     const pokeId = parseInt(req.params.id, 10);
