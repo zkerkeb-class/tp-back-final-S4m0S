@@ -26,6 +26,29 @@ app.get('/pokemons', async (req, res) => {
   }
 })
 
+app.get('/pokemons/search', async (req, res) => {
+  try{
+
+    const search_name = req.query?.name;
+
+    if (!search_name) {
+      return res.status(400).json({ message: 'Query param "name" is required.' });
+    }
+
+    const pokemons = await pokemon.find({
+      "name.french": { $regex: search_name, $options: 'i' }
+    });
+    
+    if(pokemons.length < 1){
+      res.status(404).json({message : "Can't find this pokemon in database."})
+    }
+    res.json(pokemons);
+
+  } catch (error){
+    res.status(500).json({error: 'Internal Server Error'})
+  }
+})
+
 app.get('/pokemons/:id', async (req, res) => {
   try {
     const pokeId = parseInt(req.params.id, 10);
