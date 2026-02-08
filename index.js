@@ -4,6 +4,7 @@ import pokemon from './schema/pokemon.js';
 import './connect.js';
 
 const app = express();
+app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');
@@ -69,6 +70,34 @@ app.delete('/pokemons/:id', async (req, res) => {
     }
   } catch(error) {
     res.status(500).json({error: 'Internal Server Error'})
+  }
+})
+
+app.put('/pokemons/:id', async (req, res) => {
+  try {
+    const pokeParams = req.body;
+    const pokeId = parseInt(req.params.id, 10);
+
+    const findPoke = await pokemon.findOne({ id: pokeId });
+    if (!findPoke) {
+      return res.status(404).json({ message: "Can't find this pokemon" });
+    }
+
+    
+    const doc = new pokemon(pokeParams);
+    await doc.validate(); // Checking if the params are good 
+
+    const updated = await pokemon.findOneAndUpdate(
+      { id: pokeId },
+      { $set: pokeParams },
+      { new: true, runValidators: true }
+    );
+    res.json(updated);
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({message: 'Validation failed: data does not match Pokemon schema.'});
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 })
 
