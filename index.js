@@ -101,6 +101,26 @@ app.put('/pokemons/:id', async (req, res) => {
   }
 })
 
+app.post('/pokemons', async (req, res) => {
+  try {
+    const pokeParams = req.body;
+    const maxIdDoc = await pokemon.findOne().sort({ id: -1 }).select('id').lean();
+    const nextId = (maxIdDoc?.id ?? 0) + 1;
+    const data = { ...pokeParams, id: nextId };
+
+    const doc = new pokemon(data);
+    await doc.validate();
+
+    const newPoke = await pokemon.create(data);
+    return res.status(201).json(newPoke);
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation failed: data does not match Pokemon schema.' });
+    }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+})
+
 app.get('/pokemons/:id', async (req, res) => {
   try {
     const pokeId = parseInt(req.params.id, 10);
