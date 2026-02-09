@@ -1,10 +1,18 @@
 import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pokemon from './schema/pokemon.js';
 
 import './connect.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.use(cors());
 app.use(express.json());
+
+
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');
@@ -17,15 +25,24 @@ app.get('/pokemons', async (req, res) => {
     /* Querry Params */
     const offset = req.query?.offset || 0; // 0 as default value if not provided
     const limit = req.query?.limit || 20; // 20 as the default value if not provided
-
     
+    const previousId = offset-limit-1 > 0 ? offset-limit-1 : 0;
+
     const pokemons = await pokemon.find({}).skip(offset).limit(limit);
-    res.json(pokemons);
+    
+    const firstId = pokemons.length > 0 ? pokemons[0].id : null;
+    const lastId = pokemons.length > 0 ? pokemons[pokemons.length - 1].id : null;
+
+    const lenght = (lastId-firstId) + 1;
+
+    res.json({pagination : {nextId : lastId + 1, lenght : lenght, previousId : parseInt(previousId, 10)}, data :pokemons});
 
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 })
+
+
 
 app.get('/pokemons/search', async (req, res) => {
   try{
