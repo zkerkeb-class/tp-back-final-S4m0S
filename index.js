@@ -3,14 +3,27 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pokemon from './schema/pokemon.js';
-
+import multer from 'multer';
 import './connect.js';
+import { log } from 'console';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'assets/pokemons');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
 
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
@@ -118,12 +131,43 @@ app.put('/pokemons/:id', async (req, res) => {
   }
 })
 
-app.post('/pokemons', async (req, res) => {
+app.post('/pokemons', upload.single('file'), async (req, res) => {
   try {
-    const pokeParams = req.body;
+    const rawBody = req.body;
     const maxIdDoc = await pokemon.findOne().sort({ id: -1 }).select('id').lean();
     const nextId = (maxIdDoc?.id ?? 0) + 1;
-    const data = { ...pokeParams, id: nextId };
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).send({ message: 'Please select a file.' });
+    }
+    const url = `http://localhost:3000/assets/pokemons/${file.filename}`;
+
+    // Parse JSON strings sent from the frontend
+    let parsedType = [];
+    let parsedBase = {};
+
+    try {
+      if (rawBody.type) {
+        parsedType = JSON.parse(rawBody.type);
+      }
+      if (rawBody.base) {
+        parsedBase = JSON.parse(rawBody.base);
+      }
+    } catch (parseError) {
+      return res.status(400).json({ message: 'Invalid JSON format for type or base.' });
+    }
+
+    const data = {
+      id: nextId,
+      name: {
+        french: rawBody.nameFrench,
+        english: rawBody.nameEnglish,
+      },
+      type: parsedType,
+      base: parsedBase,
+      image: url,
+    };
 
     const doc = new pokemon(data);
     await doc.validate();
@@ -131,6 +175,7 @@ app.post('/pokemons', async (req, res) => {
     const newPoke = await pokemon.create(data);
     return res.status(201).json(newPoke);
   } catch (error) {
+    console.log("MEAAGE : ", error.message)
     if (error.name === 'ValidationError') {
       return res.status(400).json({ message: 'Validation failed: data does not match Pokemon schema.' });
     }
